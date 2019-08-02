@@ -1,31 +1,31 @@
 const express = require('express')
+const mongoose = require('mongoose')
+const cookieSession = require('cookie-session')
 const passport = require('passport')
-const GoogleStrategy = require('passport-google-oauth20').Strategy
+
 const keys = require('./config/keys')
+require('./models/User')
+require('./services/passport')
+
+
+//Connect to mongo DB
+mongoose.connect(keys.mongoURI)
 
 const app = express()
-const PORT = process.env.PORT || 5000
 
-passport.use(
-    new GoogleStrategy({
-        clientID: keys.googleClientID,
-        clientSecret: keys.googleClientSecret,
-        callbackURL: '/auth/google/callback'
-    }, (accessToken, refreshToken, profile, done) => {
-        console.log('Access token', accessToken)
-        console.log('Refresh token', refreshToken)
-        console.log('Profile', profile)
-    })
-);
-
-//Note: the 'google' here is not defined by us. It is defined within the "passport-google-oauth20" strategy.
-//      Meaning we would need to look up what string to use if other strategies are desired.
-app.get('/auth/google', passport.authenticate('google', {
-    scope: ['profile', 'email']
+app.use(cookieSession({
+    maxAge: 30 * 24 * 60 * 60 * 1000, //How long til expire (in ms)
+    keys: [keys.cookieKey]
 }))
 
-app.get('/auth/google/callback', passport.authenticate('google'))
+app.use(passport.initialize())
+app.use(passport.session())
 
+require('./routes/authRoutes')(app); 
+//Calls the function we exported in authRoutes using the express instance we've created in this file
+//This causes the authRoutes routes to be added to the instance of express we've defined here.
+
+const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
     console.log('Listening on port ' + PORT)
 })
