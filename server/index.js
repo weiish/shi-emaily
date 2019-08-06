@@ -25,7 +25,7 @@ require('./routes/authRoutes')(app);
 //Calls the function we exported in authRoutes using the express instance we've created in this file
 //This causes the authRoutes routes to be added to the instance of express we've defined here.
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
     console.log('Listening on port ' + PORT)
 })
