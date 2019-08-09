@@ -7,14 +7,15 @@ module.exports = app => {
         scope: ['profile', 'email']
     }))
 
-    app.get('/auth/google/callback', passport.authenticate('google', { successRedirect: '/api/current_user', failureRedirect: '/api/current_user&fail=true' }))
+    app.get('/auth/google/callback', passport.authenticate('google', { successRedirect: '/surveys', failureRedirect: '/api/current_user&fail=true' }))
 
     app.get('/api/logout', (req, res) => {
         req.logout();
-        res.send('You are now logged out');
+        res.redirect('/')
     })
 
     app.get('/api/current_user', (req, res) => {
+        return res.send(req.user)
         if (req.user) {
             res.send('You are logged in as ' + req.user.id)
         } else {
