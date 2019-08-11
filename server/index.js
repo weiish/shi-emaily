@@ -21,9 +21,12 @@ app.use(cookieSession({
 app.use(passport.initialize())
 app.use(passport.session())
 
+app.use(express.json())
+
 require('./routes/authRoutes')(app); 
 //Calls the function we exported in authRoutes using the express instance we've created in this file
 //This causes the authRoutes routes to be added to the instance of express we've defined here.
+require('./routes/billingRoutes')(app); 
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
