@@ -5,6 +5,7 @@ const passport = require('passport')
 
 const keys = require('./config/keys')
 require('./models/User')
+require('./models/Survey')
 require('./services/passport')
 
 
@@ -27,6 +28,7 @@ require('./routes/authRoutes')(app);
 //Calls the function we exported in authRoutes using the express instance we've created in this file
 //This causes the authRoutes routes to be added to the instance of express we've defined here.
 require('./routes/billingRoutes')(app); 
+require('./routes/surveyRoutes')(app);
 
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static('client/build'))
