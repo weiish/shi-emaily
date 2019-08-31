@@ -16,15 +16,6 @@ module.exports = app => {
 
     app.get('/api/current_user', (req, res) => {
         return res.send(req.user)
-        if (req.user) {
-            res.send('You are logged in as ' + req.user.id)
-        } else {
-            if (req.query.fail) {
-                res.send('Login failed')
-            } else {
-                res.send('You are not logged in')
-            }
-        }
 
     })
 }
