@@ -1,45 +1,73 @@
-const mongoose = require('mongoose');
+const _ = require("lodash");
+const Path = require("path-parser").default;
+const { URL } = require("url");
+const mongoose = require("mongoose");
 
-const requireLogin = require('../middleware/requireLogin');
-const requireCredits = require('../middleware/requireCredits');
-const Mailer = require('../services/Mailer');
-const surveyTemplate = require('../services/emailTemplates/surveyTemplate')
+const requireLogin = require("../middleware/requireLogin");
+const requireCredits = require("../middleware/requireCredits");
+const Mailer = require("../services/Mailer");
+const surveyTemplate = require("../services/emailTemplates/surveyTemplate");
 
-const Survey = mongoose.model('survey');
-const Recipient = mongoose.model('recipient');
-
+const Survey = mongoose.model("survey");
 
 module.exports = app => {
+  app.get("/api/surveys/:surveyId/:choice", (req, res) => {
+    res.send("Thanks for voting!");
+  });
 
-    app.get('/api/surveys/thanks', (req, res) => {
-        res.send('Thanks for voting!')
-    })
-
-    app.post('/api/surveys', requireLogin, requireCredits, async (req, res) => {
-        const { title, subject, body, recipients } = req.body; //Assume that we will pass these values in the request
-
-        const survey = new Survey({
-            title,
-            subject,
-            body,
-            recipients: recipients.split(',').map(email => ({ email: email.trim() })),
-            _user: req.user.id,
-            dateSent: Date.now()
-        })
-
-        console.log('Sending an email')
-        //Send an email
-        try {
-            const mailer = new Mailer(survey, surveyTemplate(survey));
-            const mailResponse = await mailer.send();
-            await survey.save();
-            req.user.credits -= 1;
-            const user = await req.user.save();
-
-            res.send(user);
-        } catch (err) {
-            res.status(422).send(err);
+  app.post("/api/surveys/webhooks", (req, res) => {
+    const p = new Path("/api/surveys/:surveyId/:choice"); //The colon tells the Path parser that we want those as variables
+    _.chain(req.body)
+      .map(({ url, email }) => {
+        const match = p.test(new URL(url).pathname);
+        if (match) {
+          return { email, surveyId: match.surveyId, choice: match.choice };
         }
+      })
+      .compact()
+      .uniqBy("email", "surveyId") // Removes duplicate email + surveyId
+      .each(({ surveyId, email, choice }) => {
+        Survey.updateOne(
+          {
+            _id: surveyId, //_id, not just id in mongoDB
+            recipients: {
+              $elemMatch: { email: email, responded: false }
+            }
+          },
+          {
+            $inc: { [choice]: 1 },
+            $set: { "recipients.$.responded": true },
+            lastResponded: new Date()
+          }
+        ).exec();
+      })
+      .value();
+  });
 
+  app.post("/api/surveys", requireLogin, requireCredits, async (req, res) => {
+    const { title, subject, body, recipients } = req.body; //Assume that we will pass these values in the request
+
+    const survey = new Survey({
+      title,
+      subject,
+      body,
+      recipients: recipients.split(",").map(email => ({ email: email.trim() })),
+      _user: req.user.id,
+      dateSent: Date.now()
     });
+
+    console.log("Sending an email");
+    //Send an email
+    try {
+      const mailer = new Mailer(survey, surveyTemplate(survey));
+      const mailResponse = await mailer.send();
+      await survey.save();
+      req.user.credits -= 1;
+      const user = await req.user.save();
+
+      res.send(user);
+    } catch (err) {
+      res.status(422).send(err);
+    }
+  });
 };
